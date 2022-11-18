@@ -99,30 +99,11 @@ static int channel_open(ssh_channel channel, const char *type, uint32_t window,
         rc = ssh_buffer_get_u8(session->in_buffer, &reply_type);
         switch (reply_type) {
             case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
-                // LAB(PT5): insert your code here.
-                rc = ssh_buffer_unpack(session->in_buffer, "dddd", &recipient_channel, 
-                    &channel->remote_channel, &channel->remote_window, &channel->remote_maxpacket);
-                if(recipient_channel != channel->local_channel){
-                    LOG_ERROR(
-                    "channel number in the reply %d does not match with the "
-                    "original %d",
-                    recipient_channel, channel->local_channel);
-                    continue;
-                }
-                return SSH_OK;
+                // LAB: insert your code here.
+
             case SSH_MSG_CHANNEL_OPEN_FAILURE:
-                // LAB(PT5): insert your code here.
-                char *language = NULL;
-                rc = ssh_buffer_unpack(session->in_buffer, "ddss", &recipient_channel, 
-                    &reason_code, &description, &language);
-                if(recipient_channel != channel->local_channel){
-                    LOG_ERROR(
-                    "channel number in the reply %d does not match with the "
-                    "original %d",
-                    recipient_channel, channel->local_channel);
-                    continue;
-                }
-                return SSH_ERROR;
+                // LAB: insert your code here.
+
             case SSH_MSG_GLOBAL_REQUEST:
                 /**
                  * RFC 4254 Section 4
@@ -141,23 +122,11 @@ static int channel_open(ssh_channel channel, const char *type, uint32_t window,
                  * naming convention outlined in [SSH-ARCH].
                  *
                  */
-                // LAB(PT5): insert your code here.
-                rc = ssh_buffer_unpack(session->in_buffer, "Sb", &req, &want);
-                if(want){
-                    rc = ssh_buffer_pack(session->out_buffer, "b", SSH_MSG_REQUEST_FAILURE);
-                    if (rc != SSH_OK) {
-                        LOG_ERROR("can not create buffer");
-                        return SSH_ERROR;
-                    }
-                    if (ssh_packet_send(session) != SSH_OK) {
-                        return SSH_ERROR;
-                    }
-                }
-                continue;
+                // LAB: insert your code here.
+
             default:
-                // LAB(PT5): insert your code here.
-                LOG_DEBUG("SSH message type not supported yet\n");
-                continue;
+                // LAB: insert your code here.
+                rc = rc;
         }
     }
 
@@ -519,10 +488,8 @@ int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count) {
     while (count > 0) {
         if (ssh_buffer_get_len(buf) > 0) {
             /* try to read channel data from static buffer first */
-            // LAB(TP5): insert your code here.
-            rc = ssh_buffer_get_data(buf, dest, count);
-            if(rc == 0) continue;
-            return count;
+            // LAB: insert your code here.
+
         } else {
             /* static buffer has insufficient data, read another
              * SSH_MSG_CHANNEL_DATA packet */
@@ -541,51 +508,23 @@ int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count) {
             switch (type) {
                 case SSH_MSG_CHANNEL_WINDOW_ADJUST:
                     /* window adjust message could happen here */
-                    // LAB(PT5): insert your code here.
-                    rc = ssh_buffer_get_u32(session->in_buffer, &bytes_to_add);
-                    if(rc != 0){
-                        channel->local_window += bytes_to_add;
-                    }
-                    break;
+                    // LAB: insert your code here.
+
                 case SSH_MSG_CHANNEL_DATA:
-                    // LAB(PT5): insert your code here.
-                    rc = ssh_buffer_unpack(session->in_buffer, "S", &channel_data);
-                    rc = ssh_buffer_add_ssh_string(buf, channel_data);
-                    if (rc != SSH_OK) {
-                            goto error;
-                    }
-                    break;
+                    // LAB: insert your code here.
+
                 case SSH_MSG_CHANNEL_EOF:
-                    // LAB(PT5): insert your code here.
-                    goto cleanup;
+                    // LAB: insert your code here.
+
                 case SSH_MSG_CHANNEL_CLOSE:
-                    // LAB(PT5): insert your code here.
-                    rc = ssh_buffer_pack(session->out_buffer, "bd", SSH_MSG_CHANNEL_CLOSE,
-                         channel->remote_channel);
-                    if (rc != SSH_OK) {
-                        LOG_ERROR("can not create buffer");
-                        goto error;
-                    }
-                    rc = ssh_packet_send(session);
-                    if (rc != SSH_OK) goto error;
-                    break;
+                    // LAB: insert your code here.
+
                 case SSH_MSG_CHANNEL_REQUEST:
-                    // LAB(PT5): insert your code here.
-                    rc = ssh_buffer_unpack(session->in_buffer, "Sb", &req, &want);
-                    if(want){
-                        rc = ssh_buffer_pack(session->out_buffer, "bd", SSH_MSG_CHANNEL_FAILURE, channel->remote_channel);
-                        if (rc != SSH_OK) {
-                            goto error;
-                        }
-                        if (ssh_packet_send(session) != SSH_OK) {
-                            goto error;
-                        }
-                    }
-                    break;
+                    // LAB: insert your code here.
+
                 default:
-                    // LAB(PT5): insert your code here.
-                    LOG_DEBUG("SSH message type not supported yet\n");
-                    continue;
+                    // LAB: insert your code here.
+                    nread = nread;
             }
         }
     }
