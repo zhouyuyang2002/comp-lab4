@@ -602,18 +602,18 @@ static int dh_receive_reply(ssh_session session) {
     
 
     bignum client_privkey;
-    rc = bignum_new(&client_privkey);
-    if (rc != SSH_OK){
-        bignum_safe_free(client_privkey);
-        return rc;
+    client_privkey = bignum_new();
+    if (client_privkey == NULL){
+        LOG_ERROR("Failed to generate bignum\n");
+        return SSH_ERROR;
     }
     rc = dh_compute_shared_secret(crypto->dh_ctx, DH_CLIENT_KEYPAIR,
-                                  DH_SERVER_KEYPAIR, client_prikvey);
+                                  DH_SERVER_KEYPAIR, client_privkey);
     if (rc != SSH_OK){
         bignum_safe_free(client_privkey);
         return rc;
     }
-    rc = dh_keypair_set_keys(crypto->dh_ctx, SH_CLIENT_KEYPAIR,
+    rc = dh_keypair_set_keys(crypto->dh_ctx, DH_CLIENT_KEYPAIR,
                              client_privkey, NULL);
     if (rc != SSH_OK){
         bignum_safe_free(client_privkey);
@@ -656,7 +656,7 @@ static int dh_set_new_keys(ssh_session session) {
     // LAB(PT3): insert your code here.
     if (session->current_crypto != NULL)
         crypto_free(session->current_crypto);
-    session->current_crypto = session->next_crypto
+    session->current_crypto = session->next_crypto;
 
     /* next_crypto should be deprecated from now if re-kex is not supportes */
     session->next_crypto = NULL;

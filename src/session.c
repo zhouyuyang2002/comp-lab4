@@ -215,7 +215,7 @@ int receive_id_str(ssh_session session) {
         if (len <= 3 || len+ 1 > 255) continue;
         if (str[0] != 'S' || str[1] != 'S' || str[2] !='H' || str[3] != UND) continue;
         int sum_UND = 0, sum_SP = 0;
-        int pos_UND_1 = -1, pos_UND = -1;
+        int pos_UND_1 = -1, pos_UND_2 = -1;
         bool bad = false;
         for (int j = 0; j < len && !bad; j++){
             if (str[j] == UND){
