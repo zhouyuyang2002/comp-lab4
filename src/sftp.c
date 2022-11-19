@@ -239,14 +239,14 @@ sftp_file sftp_open(sftp_session sftp, const char *filename, int flags,
     /* pack a new SFTP packet and send it using `sftp_packet_write` */
     // LAB(PT6): insert your code here.
 
-    if ((rc = ssh_buffer_pack(buffer, "dsdd", id, filename, perm_flags, attr_flags)) != SSH_OK) {
+    if ((rc = ssh_buffer_pack(buffer, "dsddd", id, filename, perm_flags, attr_flags, 0)) != SSH_OK) {
         LOG_CRITICAL("can not pack buffer");
         ssh_set_error(SSH_FATAL, "buffer error");
         ssh_buffer_free(buffer);
         return NULL;
     }
 
-    if (sftp_packet_write(sftp, SSH_FXP_INIT, buffer) < 0) {
+    if (sftp_packet_write(sftp, SSH_FXP_OPEN, buffer) < 0) {
         LOG_CRITICAL("can not send open request");
         ssh_set_error(SSH_FATAL, "open request error");
         ssh_buffer_free(buffer);
@@ -386,6 +386,10 @@ int32_t sftp_read(sftp_file file, void *buf, uint32_t count) {
         // LAB(PT6): insert your code here.
         case SSH_FXP_STATUS:
             status = sftp_parse_status(response);
+            if (status->status == SSH_FX_EOF){
+                sftp_packet_free(response);
+                return 0; // special judge
+            }
             ssh_set_error(SSH_FATAL, "read response with error code %d, error message %s",
                 status->status, status->errormsg);
             sftp_packet_free(response);
@@ -393,7 +397,8 @@ int32_t sftp_read(sftp_file file, void *buf, uint32_t count) {
         case SSH_FXP_DATA:
             rc = ssh_buffer_unpack(response->payload, "dS", &recv_id, &data);
             recvlen = ssh_string_len(data);
-            memcpy(buf, ssh_string_get_char(data),  recvlen);
+            memcpy(buf, ssh_string_get_char(data), recvlen);
+            file->offset += recvlen;
             sftp_packet_free(response);
             return recvlen;
         default:
@@ -451,10 +456,18 @@ int32_t sftp_write(sftp_file file, const void *buf, uint32_t count) {
             // LAB(PT6): insert your code here.
             case SSH_FXP_STATUS:
                 status = sftp_parse_status(response);
-                LOG_DEBUG("write response with error code %d, error message %s",
-                    status->status, status->errormsg);
-                sftp_packet_free(response);
-                break;
+                if (status->status == SSH_FX_OK){
+                    file->offset += nwrite;
+                    nleft -= nwrite;
+                    sftp_packet_free(response);
+                    break;
+                }
+                else{
+                    LOG_DEBUG("write response with error code %d, error message %s",
+                        status->status, status->errormsg);
+                    sftp_packet_free(response);
+                    return SSH_ERROR;
+                }
             default:
                 ssh_set_error(SSH_FATAL, "unexpected sftp write response type");
                 sftp_packet_free(response);

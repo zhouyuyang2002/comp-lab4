@@ -37,11 +37,9 @@ int ssh_request_auth(ssh_session session) {
                          "ssh-userauth");
     rc |= ssh_packet_send(session);
     if (rc != SSH_OK) return rc;
-    LOG_DEBUG("fuck");
 
     rc = ssh_packet_receive(session);
     if (rc != SSH_OK) return rc;
-    LOG_DEBUG("fuck");
 
     rc = ssh_buffer_unpack(session->in_buffer, "bs", &type, &service);
     if (rc != SSH_OK || type != SSH_MSG_SERVICE_ACCEPT ||
@@ -101,7 +99,6 @@ int ssh_userauth_password(ssh_session session, const char *password) {
     uint8_t type;
     static int cnt = 0;
 
-    LOG_DEBUG("CHK");
     rc = ssh_buffer_pack(session->out_buffer, "bsssbs",
                          SSH_MSG_USERAUTH_REQUEST, session->opts.username,
                          "ssh-connection", "password", 0, password);
@@ -128,7 +125,6 @@ int ssh_userauth_password(ssh_session session, const char *password) {
         char retry_password[100];
         switch (type) {
             case SSH_MSG_USERAUTH_BANNER:
-                LOG_DEBUG("banner");
                 // LAB(PT4): insert your code here.
                 
                 // We just need to print some extre message(include warning)
@@ -144,35 +140,22 @@ int ssh_userauth_password(ssh_session session, const char *password) {
                 if (rc != SSH_OK)
                     goto error;
             case SSH_MSG_USERAUTH_SUCCESS:
-                LOG_DEBUG("success");
                 // LAB(PT4): insert your code here.
+                LOG_NOTICE("connection success!");
                 return SSH_OK;
 
             case SSH_MSG_USERAUTH_PASSWD_CHANGEREQ:
             case SSH_MSG_USERAUTH_FAILURE:
-                LOG_DEBUG("failure");
                 // LAB(PT4): insert your code here.
                 ++cnt;
-                fprintf(stdout, "Wrong passwd, tried %d time(s)\n", cnt);
-                fflush(stdout);
+                ssh_set_error(SSH_FATAL, "Wrong passwd, tried %d time(s)\n", cnt);
                 #define MAX_AUTH_TRY 3
                 if (cnt == MAX_AUTH_TRY){
                     ssh_set_error(SSH_FATAL, "Try too many times, connection failed!\n");
-                    return SSH_AGAIN;
+                    return SSH_ERROR;
                 }
                 #undef MAX_AUTH_TRY
-                
-                ssh_get_password(retry_password);
-                rc = ssh_buffer_pack(session->out_buffer, "bsssbs",
-                                      SSH_MSG_USERAUTH_REQUEST, 
-                                      session->opts.username,
-                                      "ssh-connection", "password",
-                                      0, password);
-                if (rc != SSH_OK) goto error;
-
-                rc = ssh_packet_send(session);
-                if (rc != SSH_OK) goto error;
-                break;
+                return SSH_AGAIN;
             default:
                 // LAB(PT4): insert your code here.
                 ssh_set_error(SSH_FATAL, "Unexpected server behavior!\n");
