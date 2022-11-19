@@ -65,6 +65,7 @@ static int channel_open(ssh_channel channel, const char *type, uint32_t window,
     uint32_t recipient_channel;
     uint32_t reason_code;
     char *description = NULL;
+    char *language = NULL;
     ssh_string req;
     bool want;
     int rc;
@@ -112,7 +113,6 @@ static int channel_open(ssh_channel channel, const char *type, uint32_t window,
                 return SSH_OK;
             case SSH_MSG_CHANNEL_OPEN_FAILURE:
                 // LAB(PT5): insert your code here.
-                char *language = NULL;
                 rc = ssh_buffer_unpack(session->in_buffer, "ddss", &recipient_channel, 
                     &reason_code, &description, &language);
                 if(recipient_channel != channel->local_channel){
