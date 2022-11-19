@@ -240,11 +240,11 @@ int receive_id_str(ssh_session session) {
             ssh_set_error(SSH_FATAL, "bad ssh version string");
             return SSH_ERROR;
         }
-        LOG_DEBUG("SSH server version string = %s", str);
+        LOG_NOTICE("SSH server version string = %s", str);
         session->server_id_str = strdup(str);
         str[pos_UND_2] = 0;
         session->protoversion = (int)(atof(&str[pos_UND_1 + 1]));
-        LOG_DEBUG("SSH server version number = %d", session->protoversion);
+        LOG_NOTICE("SSH server version number = %d", session->protoversion);
         return SSH_OK;
 
         #undef CR

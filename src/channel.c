@@ -103,6 +103,10 @@ static int channel_open(ssh_channel channel, const char *type, uint32_t window,
                 // LAB(PT5): insert your code here.
                 rc = ssh_buffer_unpack(session->in_buffer, "dddd", &recipient_channel, 
                     &channel->remote_channel, &channel->remote_window, &channel->remote_maxpacket);
+                LOG_DEBUG("local window = %d", channel->local_window);
+                LOG_DEBUG("remote window = %d", channel->remote_window);
+                LOG_DEBUG("local channel number = %d", recipient_channel);
+                LOG_DEBUG("remote channel number = %d", channel->local_channel);
                 if(recipient_channel != channel->local_channel){
                     LOG_ERROR(
                     "channel number in the reply %d does not match with the "

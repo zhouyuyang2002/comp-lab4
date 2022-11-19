@@ -245,7 +245,7 @@ int ssh_select_kex(ssh_session session) {
         if (i >= 8){
             char* blank_ptr = calloc(1, 1); 
             session->next_crypto->kex_methods[i] = blank_ptr;
-            LOG_DEBUG("%d-th kex method name = %s", i, blank_ptr);
+            LOG_NOTICE("%d-th kex method name = %s", i, blank_ptr);
             continue;
             //ignore it
         }
@@ -294,7 +294,7 @@ int ssh_select_kex(ssh_session session) {
                 char* buffer = calloc(1, len + 1);
                 memcpy(buffer, method_name_client[j], len);
                 crypto->kex_methods[i] = buffer;
-                LOG_DEBUG("%d-th negotiationed kex method name = %s", i, buffer);
+                LOG_NOTICE("%d-th negotiationed kex method name = %s", i, buffer);
                 goto continue_loop;
             }
         }

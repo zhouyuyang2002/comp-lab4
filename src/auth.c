@@ -119,6 +119,9 @@ int ssh_userauth_password(ssh_session session, const char *password) {
     while (rc != SSH_ERROR) {
         rc = ssh_packet_receive(session);
         if (rc != SSH_OK) goto error;
+        ssh_log_hexdump("authorized message:",
+                        ssh_buffer_get(session->in_buffer),
+                        ssh_buffer_get_len(session->in_buffer));
         ssh_buffer_get_u8(session->in_buffer, &type);
         char* banner_msg = NULL;
         char* banner_lang = NULL;
