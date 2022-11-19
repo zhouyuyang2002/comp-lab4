@@ -550,7 +550,11 @@ int ssh_channel_read(ssh_channel channel, void *dest, uint32_t count) {
                 case SSH_MSG_CHANNEL_DATA:
                     // LAB(PT5): insert your code here.
                     rc = ssh_buffer_unpack(session->in_buffer, "S", &channel_data);
-                    rc = ssh_buffer_add_ssh_string(buf, channel_data);
+                    if(rc != SSH_OK){
+                        goto error;
+                    }
+                    int data_len = ssh_string_len(channel_data);
+                    rc = ssh_buffer_add_data(buf, channel_data->data, data_len);
                     if (rc != SSH_OK) {
                             goto error;
                     }
