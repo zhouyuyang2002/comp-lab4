@@ -279,9 +279,8 @@ int ssh_packet_receive(ssh_session session) {
             goto error;
         }
         /* verify MAC, see `packet_hmac_verify` */
-        // LAB(PT3): insert your code here.
-        // I'm not sure whether mac is calculated with plaintext or ciphertext?
-        rc = packet_hmac_verify(session, data, to_be_read - current_macsize, mac, SSH_HMAC_SHA1);
+        // LAB: insert your code here.
+
         if (rc != SSH_OK) {
             ssh_set_error(SSH_FATAL, "hmac error");
             goto error;
@@ -348,6 +347,8 @@ int ssh_packet_send(ssh_session session) {
     int rc;
 
     crypto = ssh_get_crypto(session, SSH_DIRECTION_OUT);
+    if (crypto)
+        LOG_DEBUG("%08x %08x %s", crypto, crypto->out_cipher, crypto->out_cipher->name);
     if (crypto) {
         blocksize = crypto->out_cipher->blocksize;
         lenfield_blocksize = crypto->out_cipher->lenfield_blocksize;

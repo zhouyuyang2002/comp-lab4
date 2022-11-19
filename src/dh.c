@@ -381,7 +381,7 @@ static int dh_compute_session_id(ssh_session session) {
 
     rc = dh_keypair_get_keys(session->next_crypto->dh_ctx, DH_CLIENT_KEYPAIR,
                              NULL, &client_pubkey);
-    rc |= get_keys(session->next_crypto->dh_ctx, DH_SERVER_KEYPAIR,
+    rc |= dh_keypair_get_keys(session->next_crypto->dh_ctx, DH_SERVER_KEYPAIR,
                               NULL, &server_pubkey);
     if (rc != SSH_OK) goto error;
 
@@ -599,26 +599,15 @@ static int dh_receive_reply(ssh_session session) {
     /* Skip: check server public key */
     /* What should we do next? */
     // LAB(PT3): insert your code here.
-    
 
-    bignum client_privkey;
-    client_privkey = bignum_new();
-    if (client_privkey == NULL){
-        LOG_ERROR("Failed to generate bignum\n");
-        return SSH_ERROR;
-    }
     rc = dh_compute_shared_secret(crypto->dh_ctx, DH_CLIENT_KEYPAIR,
-                                  DH_SERVER_KEYPAIR, client_privkey);
+                                  DH_SERVER_KEYPAIR, &crypto->shared_secret);
     if (rc != SSH_OK){
-        bignum_safe_free(client_privkey);
+        bignum_safe_free(crypto->shared_secret);
         return rc;
     }
-    rc = dh_keypair_set_keys(crypto->dh_ctx, DH_CLIENT_KEYPAIR,
-                             client_privkey, NULL);
-    if (rc != SSH_OK){
-        bignum_safe_free(client_privkey);
-        return rc;
-    }
+    rc = dh_compute_session_id(session);
+    if (rc != SSH_OK) return rc;
     /* Skip: verifies signature on H (session id) */
 
     rc = ssh_crypto_set_algo(session);
@@ -657,6 +646,7 @@ static int dh_set_new_keys(ssh_session session) {
     if (session->current_crypto != NULL)
         crypto_free(session->current_crypto);
     session->current_crypto = session->next_crypto;
+    session->current_crypto->used = SSH_DIRECTION_BOTH;
 
     /* next_crypto should be deprecated from now if re-kex is not supportes */
     session->next_crypto = NULL;

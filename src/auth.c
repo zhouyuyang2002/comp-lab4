@@ -37,9 +37,11 @@ int ssh_request_auth(ssh_session session) {
                          "ssh-userauth");
     rc |= ssh_packet_send(session);
     if (rc != SSH_OK) return rc;
+    LOG_DEBUG("fuck");
 
     rc = ssh_packet_receive(session);
     if (rc != SSH_OK) return rc;
+    LOG_DEBUG("fuck");
 
     rc = ssh_buffer_unpack(session->in_buffer, "bs", &type, &service);
     if (rc != SSH_OK || type != SSH_MSG_SERVICE_ACCEPT ||
@@ -99,6 +101,7 @@ int ssh_userauth_password(ssh_session session, const char *password) {
     uint8_t type;
     static int cnt = 0;
 
+    LOG_DEBUG("CHK");
     rc = ssh_buffer_pack(session->out_buffer, "bsssbs",
                          SSH_MSG_USERAUTH_REQUEST, session->opts.username,
                          "ssh-connection", "password", 0, password);
@@ -120,11 +123,12 @@ int ssh_userauth_password(ssh_session session, const char *password) {
         rc = ssh_packet_receive(session);
         if (rc != SSH_OK) goto error;
         ssh_buffer_get_u8(session->in_buffer, &type);
-        char* banner_msg;
-        char* banner_lang;
-        char* retry_password;
+        char* banner_msg = NULL;
+        char* banner_lang = NULL;
+        char retry_password[100];
         switch (type) {
             case SSH_MSG_USERAUTH_BANNER:
+                LOG_DEBUG("banner");
                 // LAB(PT4): insert your code here.
                 
                 // We just need to print some extre message(include warning)
@@ -135,16 +139,18 @@ int ssh_userauth_password(ssh_session session, const char *password) {
                     fprintf(stdout, "%s", banner_msg);
                     fflush(stdout);
                 }
-                safe_free(&banner_msg);
-                safe_free(&banner_lang);
+                SAFE_FREE(banner_msg);
+                SAFE_FREE(banner_lang);
                 if (rc != SSH_OK)
                     goto error;
             case SSH_MSG_USERAUTH_SUCCESS:
+                LOG_DEBUG("success");
                 // LAB(PT4): insert your code here.
                 return SSH_OK;
 
             case SSH_MSG_USERAUTH_PASSWD_CHANGEREQ:
             case SSH_MSG_USERAUTH_FAILURE:
+                LOG_DEBUG("failure");
                 // LAB(PT4): insert your code here.
                 ++cnt;
                 fprintf(stdout, "Wrong passwd, tried %d time(s)\n", cnt);

@@ -194,6 +194,8 @@ int main(int argc, char** argv) {
         }
     }
 
+    fprintf(stdout, "connection success!\n");
+    fprintf(stdout, "authentication layer finish, quit\n");
     /* Connection Layer & SFTP Layer */
     sftp_session sftp = sftp_new(session);
     if (sftp == NULL) {

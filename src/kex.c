@@ -125,7 +125,6 @@ int ssh_send_kex(ssh_session session) {
     if (hashbufout_add_cookie(session) < 0) goto error;
 
     for (int i = 0; i < SSH_KEX_METHODS; ++i) {
-
         str = ssh_string_from_char(kex->methods[i]);
         if (ssh_buffer_add_ssh_string(session->out_hashbuf, str) < 0) {
             goto error;
@@ -186,15 +185,19 @@ int ssh_receive_kex(ssh_session session) {
     for (int i = 0; i < SSH_KEX_METHODS; i++) {
         /* parse name-lists, don't forget to add `in_hashbuf` */
         // LAB(PT2): insert your code here.
-        uint32_t kex_len;
-        ssh_buffer_get_u32(session->in_buffer, &kex_len);
-        strings[i] = calloc(1, kex_len + 1);
-        len = ssh_buffer_get_data(session->in_buffer, strings[i], (size_t)kex_len);
-        if (len != kex_len) goto error;
-    
-        str = ssh_string_from_char(strings[i]);
-        if (ssh_buffer_add_ssh_string(session->in_hashbuf, str) < 0) goto error;
-        free(str);
+        char* kex_method = NULL;
+        rc = ssh_buffer_unpack(session->in_buffer, "s", &kex_method);
+        if (rc != SSH_OK){
+            SAFE_FREE(kex_method);
+            goto error;
+        }
+        len = strlen(kex_method);
+        strings[i] = kex_method;
+        rc = ssh_buffer_pack(session->in_hashbuf, "s", kex_method);
+        if (rc != SSH_OK){
+            SAFE_FREE(kex_method);
+            goto error;
+        }
     }
 
     rc = ssh_buffer_unpack(session->in_buffer, "bd", &first_kex_follows,
@@ -239,47 +242,71 @@ int ssh_select_kex(ssh_session session) {
     for (int i = 0; i < SSH_KEX_METHODS; ++i) {
         /* select negotiated algorithms and store them in `next_crypto->kex_methods` */
         // LAB(PT2): insert your code here.
-        
-        static int num_succeed;
-        if (i == 0)
-            num_succeed = 0;
-        if (client->methods[i] == NULL){
-            session->next_crypto->kex_methods[i] = NULL;
-            if (i + 1 == SSH_KEX_METHODS && num_succeed == 0)
-                goto error;
+        if (i >= 8){
+            char* blank_ptr = calloc(1, 1); 
+            session->next_crypto->kex_methods[i] = blank_ptr;
+            LOG_DEBUG("%d-th kex method name = %s", i, blank_ptr);
             continue;
+            //ignore it
         }
+        int comma_server = 0;
+        int comma_client = 0;
+        int len_server = strlen(server->methods[i]);
         int len_client = strlen(client->methods[i]);
-        bool matched = false;
-        for (int j = 0; j < SSH_KEX_METHODS; j++){
-            if (server->methods[j] == NULL){
-                continue;
+        for (int j = 0; j < len_server; j++)
+            if (server->methods[i][j] == ',')
+                comma_server ++;
+        for (int j = 0; j < len_client; j++)
+            if (client->methods[i][j] == ',')
+                comma_client ++;
+        char** method_name_server = (char**)calloc(sizeof(char *), comma_server + 1);
+        char** method_name_client = (char**)calloc(sizeof(char *), comma_client + 1);
+        method_name_server[0] = &server->methods[i][0];
+        method_name_client[0] = &client->methods[i][0];
+        comma_server = 0;
+        comma_client = 0;
+        for (int j = 0; j < len_server; j++)
+            if (server->methods[i][j] == ','){
+                if (j == len_server - 1)
+                    goto error_loop;
+                server->methods[i][j] = 0;
+                method_name_server[++comma_server] = &server->methods[i][j + 1];
             }
-            bool same = true;
-            int len_server = strlen(server->methods[j]);
-            if (len_server != len_client)
-                same = false;
-            for (int k = 0; k < len_server && same; k++)
-                if (server->methods[j][k] != client->methods[i][k])
-                    same = false;
-            if (same){
-                matched = true;
-                session -> server = j;
+        for (int j = 0; j < len_client; j++)
+            if (client->methods[i][j] == ','){
+                if (j == len_client - 1)
+                    goto error_loop;
+                client->methods[i][j] = 0;
+                method_name_client[++comma_client] = &client->methods[i][j + 1];
+            }
+        for (int j = 0; j <= comma_client; j++){
+            //LOG_DEBUG("%d-th kex method, name = %s", i, method_name_client[j]);
+            int len = strlen(method_name_client[j]);
+            if (len == 0) continue;
+            bool matched = false;
+            for (int k = 0; k <= comma_server; k++){
+                //LOG_DEBUG("%d-th kex method, check name = %s", i, method_name_server[k]);
+                if (strcmp(method_name_client[j], method_name_server[k]) == 0)
+                    matched = true;
+            }
+            if (matched == true){
+                struct ssh_crypto_struct *crypto = session->next_crypto;
+                char* buffer = calloc(1, len + 1);
+                memcpy(buffer, method_name_client[j], len);
+                crypto->kex_methods[i] = buffer;
+                LOG_DEBUG("%d-th negotiationed kex method name = %s", i, buffer);
+                goto continue_loop;
             }
         }
-        if (matched){
-            session->next_crypto->kex_methods[i] = calloc(1, len_client);
-            memcpy(session->next_crypto->kex_methods[i],
-                  client->methods[i], (size_t)len_client);
-            num_succeed ++;
-            session -> client = i;
-            break;
-        }
-        else{
-            session->next_crypto->kex_methods[i] = NULL;
-            if (i + 1 == SSH_KEX_METHODS && num_succeed == 0)
-                goto error;
-        }
+    error_loop:
+    
+        //LOG_DEBUG("%d-th kex method", i);
+        free(method_name_client);
+        free(method_name_server);
+        goto error;
+
+    continue_loop:
+        i = i;
     }
     session->next_crypto->kex_type = SSH_KEX_DH_GROUP14_SHA256;
     return SSH_OK;

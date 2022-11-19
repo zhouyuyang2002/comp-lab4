@@ -197,50 +197,54 @@ int receive_id_str(ssh_session session) {
     for (int i = 0; i < 256; ++i) {
         ssh_socket_read(session->socket, &buffer[i], 1);
         // LAB(PT1): insert your code here.
+        //LOG_DEBUG("trying reading char %d = %02x", i, buffer[i]);
         #define CR 0xd
         #define LF 0xa
         #define SP 0x20
         #define UND 0x2d
+        if (i == 0 || buffer[i] != LF || buffer[i - 1] != CR) continue;
+        char* str = &buffer[i - 1];
+        for (; str != buffer; str = str - 1)
+            if (str != (buffer + 1))
+                if (str[-2] == CR && str[-1] == LF)
+                    break;
         bool match;
-        char* str = &buffer[i];
-        int len = 1;
-        for (;;len ++){
-            if (len + 1 > 255)
-                break;
-            if (str[len - 1] == CR && str[len] == LF){
-                len -= 1;
-                break;
-            }
-        }
-        if (len <= 3 || len+ 1 > 255) continue;
+        int len = (int)(&buffer[i] - str) + 1;
+
+        //LOG_DEBUG("trying check string start from %d, length = %d, ", (int)(str - buffer), len);
+        if (len <= 3 || len + 1 > 255) continue;
         if (str[0] != 'S' || str[1] != 'S' || str[2] !='H' || str[3] != UND) continue;
+
         int sum_UND = 0, sum_SP = 0;
         int pos_UND_1 = -1, pos_UND_2 = -1;
         bool bad = false;
         for (int j = 0; j < len && !bad; j++){
             if (str[j] == UND){
                 if (j == 0 || j == len - 1 || str[j-1] == '-' || str[j+1] == SP) bad = true;
-                if ((++sum_UND) > 2) bad = true;
-                else if (pos_UND_1 == -1)
-                    pos_UND_1 = j;
-                else pos_UND_2 = j;
+                if (sum_SP == 0){
+                    if ((++sum_UND) > 2) bad = true;
+                    else if (pos_UND_1 == -1)
+                        pos_UND_1 = j;
+                    else pos_UND_2 = j;
+                }
             }
             if (str[j] == SP){
                 if (sum_UND != 2) bad = true;
                 sum_SP = 1;
-                break;
             }
         }
-        if (sum_SP != 1)
-            bad = true;
+        if (sum_UND != 2) bad = true;
+        str[len - 2] = 0;
         if (bad){
-            LOG_ERROR("bad ssh version string, line %d\n", i);
+            //LOG_ERROR("bad ssh version string, line %d, string = %s\n", i, str);
             ssh_set_error(SSH_FATAL, "bad ssh version string");
             return SSH_ERROR;
         }
+        LOG_DEBUG("SSH server version string = %s", str);
         session->server_id_str = strdup(str);
         str[pos_UND_2] = 0;
-        session->protoversion = (floor(stof(&str[pos_UND_1 + 1])));
+        session->protoversion = (int)(atof(&str[pos_UND_1 + 1]));
+        LOG_DEBUG("SSH server version number = %d", session->protoversion);
         return SSH_OK;
 
         #undef CR
@@ -341,6 +345,9 @@ int ssh_connect(ssh_session session) {
         LOG_ERROR("can not perform DH handshake");
         goto error;
     }
+
+    
+    LOG_NOTICE("key exchange succeed");
 
     /**
      * 2.4 Send user authentication request
